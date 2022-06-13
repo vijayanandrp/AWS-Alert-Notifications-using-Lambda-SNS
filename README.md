@@ -21,5 +21,18 @@ NOTE: All email address and group email address should be verified manually.
 
 
 
+### Sample AWS SNS event to AWS Lambda
 
+```json
+     {
+          "env": "dev",
+          "create_or_update_ses": "true",
+          "app_name": "demo_app",
+          "app_data": {
+            "date": "2022-06-03",
+            "env": "dev"
+          },
+          "log_debug": "false"
+     }
+```
 
