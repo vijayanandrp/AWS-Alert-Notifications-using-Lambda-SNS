@@ -15,12 +15,21 @@ if root.handlers:
 
 stream_handler = logging.StreamHandler(sys.stdout)
 log_args = {
-    "level": logging.DEBUG if os.environ.get("log_debug", "false") == "true" else logging.INFO,
+    "level": logging.INFO,
     "format": "%(asctime)s [%(levelname)s] %(name)s - %(message)s",
     "datefmt": "%d-%b-%y %H:%M",
     "handlers": [stream_handler]
 }
 logging.basicConfig(**log_args)
 
+
 def get_logger(name):
     return logging.getLogger(name)
+
+
+default_email_config = {
+    "sender": "vpandian@email.com",
+    "to_recipient": ["vpandian@email.com"],
+    "cc_recipient": ["vpandian@email.com"],
+    "reply_to_address": []
+}

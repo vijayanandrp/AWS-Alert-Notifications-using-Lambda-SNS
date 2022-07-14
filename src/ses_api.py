@@ -2,13 +2,13 @@ import os
 import boto3
 import json
 
-from config import config_dir, config_format, get_logger
+from config import config_dir, config_format, get_logger, default_email_config
 
 file_name = os.path.splitext(os.path.basename(__file__))[0]
 
 
-def get_app_config(app_name: str = None):
-    log = get_logger(f"{file_name}.{get_app_config.__name__}")
+def get_email_template(app_name: str = None):
+    log = get_logger(f"{file_name}.{get_email_template.__name__}")
 
     log.info(f'[+] App name - {app_name}')
 
@@ -36,11 +36,11 @@ def get_app_config(app_name: str = None):
 def create_or_update_ses_template(app_name: str = None):
     log = get_logger(f"{file_name}.{create_or_update_ses_template.__name__}")
 
-    app_config = get_app_config(app_name)
-    if not app_config:
+    email_template = get_email_template(app_name)
+    if not email_template:
         return None
 
-    ses = boto3.client('ses', app_config['aws_region'])
+    ses = boto3.client('ses', email_template['aws_region'])
 
     # get list of email templates
     ses_existing_templates = ses.list_templates()
@@ -51,10 +51,10 @@ def create_or_update_ses_template(app_name: str = None):
                                    if _ and isinstance(_, dict)]
     log.info(f"[+] ses_existing_template_names - {ses_existing_template_names}")
 
-    template_name = app_config['template_name']
-    subject_part = app_config['email']['subject_part']
-    text_part = app_config['email']['text_part']
-    html_part = app_config['email']['html_part']
+    template_name = email_template['template_name']
+    subject_part = email_template['email']['subject_part']
+    text_part = email_template['email']['text_part']
+    html_part = email_template['email']['html_part']
 
     if template_name not in ses_existing_template_names:
         response = ses.create_template(
@@ -80,22 +80,26 @@ def create_or_update_ses_template(app_name: str = None):
         return response
 
 
-def send_email(app_name: str = None, app_data: str = None):
+def send_email(app_name=None, app_data=None, email_data=None):
     log = get_logger(f"{file_name}.{send_email.__name__}")
-    app_config = get_app_config(app_name)
-    ses = boto3.client('ses', app_config['aws_region'])
+    email_template = get_email_template(app_name)
+    ses = boto3.client('ses', email_template['aws_region'])
+
+    if not email_data:
+        log.info('Loading default email config...')
+        email_data = default_email_config
+
     log.info(f"[*] app_data - {app_data}")
-    response = ses.send_templated_email(
-        Source=app_config['email']['sender'],
-        Destination={
-            'ToAddresses': app_config['email']['to_recipient']
-            ,
-            'CcAddresses': app_config['email']['cc_recipient']
-        },
-        ReplyToAddresses=[
-        ],
-        Template=app_config['template_name'],
-        TemplateData=app_data
-    )
+    log.info(f"[*] email_data - {email_data}")
+
+    email_kwargs = {'Source': email_data.get('sender', default_email_config['sender']),
+                    'Destination': {'ToAddresses': email_data.get('to_recipient', []),
+                                    'CcAddresses': email_data.get('cc_recipient', [])},
+                    'ReplyToAddresses': email_data.get('reply_to_address', []),
+                    'Template': email_template['template_name'],
+                    'TemplateData': app_data}
+
+    response = ses.send_templated_email(**email_kwargs)
+
     log.info(f"[+] Sent an email for the App Name = {app_name}; Response - {response}")
     return response
